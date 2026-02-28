@@ -25,7 +25,7 @@ export async function POST(request: Request) {
 
         // 2. Extract Repos using LLM
         addLog(`Extracting repositories using ${llmProvider}...`);
-        const repoUrls = await extractGitReposFromJira(llmProvider, llmApiKey, ticket.fields.description);
+        const { urls: repoUrls, purpose, bdd } = await extractGitReposFromJira(llmProvider, llmApiKey, ticket.fields.description);
 
         if (repoUrls.length === 0) {
             addLog("No repositories found in ticket.");
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
             envVarsMap[repoName] = await fetchEnvFile(quickVarKey || "default", repoName);
         }
 
-        const tomlContent = generateMultiRepoTomlFile(reposData, jiraTicket, envVarsMap);
+        const tomlContent = generateMultiRepoTomlFile(reposData, jiraTicket, envVarsMap, purpose, bdd);
         addLog("Workspace files successfully generated!");
 
         return NextResponse.json({

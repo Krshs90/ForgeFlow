@@ -7,13 +7,20 @@ export async function fetchEnvFile(quickVarKey: string, repoName: string) {
 export function generateMultiRepoTomlFile(
     repos: any[],
     jiraKey: string,
-    envVarsMap: Record<string, string>
+    envVarsMap: Record<string, string>,
+    purpose: string,
+    bddDocs: string
 ) {
     const tomlLines: string[] = [];
 
     tomlLines.push(`[orchestration]`);
     tomlLines.push(`ticket = "${jiraKey}"`);
     tomlLines.push(`created_at = "${new Date().toISOString()}"`);
+    tomlLines.push(`purpose = """\n${purpose}\n"""`);
+    tomlLines.push(``);
+
+    tomlLines.push(`[documentation]`);
+    tomlLines.push(`bdd = """\n${bddDocs}\n"""`);
     tomlLines.push(``);
 
     repos.forEach((repo, index) => {
@@ -29,11 +36,14 @@ export function generateMultiRepoTomlFile(
         repo.analysis.buildCommands.forEach((cmd: string) => {
             tomlLines.push(`  "${cmd}",`);
         });
+        // Add shift-left integration for python
+        if (repo.analysis.type === "Python") {
+            tomlLines.push(`  "pip install pre-commit && pre-commit install",`);
+            tomlLines.push(`  "echo 'Shift-Left integrated'",`);
+        }
         tomlLines.push(`]`);
 
         if (envVarsMap[repoName]) {
-            // In a real file we would just dump a path, but here we embed it as a string for simplicity
-            // Or we can say env_file = ".env"
             tomlLines.push(`env_template = true`);
         }
 
