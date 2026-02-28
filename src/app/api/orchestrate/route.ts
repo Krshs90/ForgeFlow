@@ -1,0 +1,65 @@
+import { NextResponse } from "next/server";
+import { fetchJiraTicket } from "@/lib/jira";
+import { extractGitReposFromJira } from "@/lib/llm";
+import { downloadAndAnalyzeRepo } from "@/lib/repoAnalysis";
+import { generateMultiRepoTomlFile, fetchEnvFile } from "@/lib/generation";
+
+export async function POST(request: Request) {
+    try {
+        const body = await request.json();
+        const { jiraBaseUrl, jiraToken, jiraTicket, llmProvider, llmApiKey, quickVarKey } = body;
+
+        if (!jiraTicket || !jiraToken || !jiraBaseUrl) {
+            return NextResponse.json({ error: "Missing Jira credentials" }, { status: 400 });
+        }
+
+        const log: string[] = [];
+        const addLog = (msg: string) => {
+            log.push(`[${new Date().toISOString()}] ${msg}`);
+            console.log(msg);
+        };
+
+        // 1. Fetch Jira Ticket
+        addLog(`Fetching Jira ticket ${jiraTicket}...`);
+        const ticket = await fetchJiraTicket(jiraBaseUrl, jiraToken, jiraTicket);
+
+        // 2. Extract Repos using LLM
+        addLog(`Extracting repositories using ${llmProvider}...`);
+        const repoUrls = await extractGitReposFromJira(llmProvider, llmApiKey, ticket.fields.description);
+
+        if (repoUrls.length === 0) {
+            addLog("No repositories found in ticket.");
+            return NextResponse.json({ log, toml: null });
+        }
+
+        // 3. Analyze Repos
+        addLog(`Analyzing ${repoUrls.length} repositories...`);
+        const reposData = [];
+        for (const url of repoUrls) {
+            const analysis = await downloadAndAnalyzeRepo(url);
+            reposData.push({ url, analysis });
+        }
+
+        // 4. Generate Env and TOML
+        addLog("Generating orchestration files...");
+        const envVarsMap: Record<string, string> = {};
+        for (const repo of reposData) {
+            const repoName = repo.url.split("/").pop()?.replace(".git", "") || "repo";
+            envVarsMap[repoName] = await fetchEnvFile(quickVarKey || "default", repoName);
+        }
+
+        const tomlContent = generateMultiRepoTomlFile(reposData, jiraTicket, envVarsMap);
+        addLog("Workspace files successfully generated!");
+
+        return NextResponse.json({
+            success: true,
+            log,
+            toml: tomlContent,
+            envMaps: envVarsMap
+        });
+
+    } catch (error: any) {
+        console.error("Orchestration error:", error);
+        return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
+    }
+}
