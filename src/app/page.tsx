@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Settings, Play, Database, FileCode2, TerminalSquare, AlertCircle, CheckCircle2 } from "lucide-react";
 
 export default function Home() {
@@ -19,8 +19,20 @@ export default function Home() {
     quickVarKey: "",
   });
 
+  // Load from localStorage on mount
+  useEffect(() => {
+    const savedConfig = localStorage.getItem("forgeflowConfig");
+    if (savedConfig) {
+      setFormData(JSON.parse(savedConfig));
+    }
+  }, []);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const newFormData = { ...formData, [e.target.name]: e.target.value };
+    setFormData(newFormData);
+    // Don't save the specific ticket they are generating for, just their reusable config credentials
+    const configToSave = { ...newFormData, jiraTicket: "" };
+    localStorage.setItem("forgeflowConfig", JSON.stringify(configToSave));
   };
 
   const handleGenerate = async () => {
