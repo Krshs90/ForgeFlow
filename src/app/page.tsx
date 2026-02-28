@@ -267,15 +267,26 @@ export default function Home() {
                       <p className="text-sm text-muted-foreground">Download your PowerShell script and TOML config.</p>
                     </div>
                   </div>
-                  <div className="flex gap-3">
-                    <button onClick={downloadToml} className="vercel-button-secondary flex items-center gap-2">
-                      <FileCode2 className="w-4 h-4" />
-                      Download TOML
-                    </button>
-                    <a href="/scripts/poll_toml_files.ps1" download className="vercel-button flex items-center gap-2">
-                      <TerminalSquare className="w-4 h-4" />
-                      poll_toml_files.ps1
-                    </a>
+                  <div className="flex flex-col gap-3">
+                    <div className="flex gap-3">
+                      <button onClick={downloadToml} className="vercel-button-secondary flex items-center gap-2">
+                        <FileCode2 className="w-4 h-4" />
+                        Download TOML
+                      </button>
+                      <a href="/scripts/poll_toml_files.ps1" download className="vercel-button flex items-center gap-2">
+                        <TerminalSquare className="w-4 h-4" />
+                        poll_toml_files.ps1
+                      </a>
+                    </div>
+                    <div className="flex gap-3 pt-2 border-t border-border mt-1">
+                      <span className="text-xs text-muted-foreground flex items-center mr-2">Additional Scripts:</span>
+                      <a href="/scripts/File_Watcher.ps1" download className="vercel-button-secondary text-xs h-7 px-2">
+                        File_Watcher.ps1
+                      </a>
+                      <a href="/scripts/File_Stopper.ps1" download className="vercel-button-secondary text-xs h-7 px-2">
+                        File_Stopper.ps1
+                      </a>
+                    </div>
                   </div>
                 </div>
               )}
