@@ -81,7 +81,7 @@ export async function testLLMConnection(provider: string, apiKey: string) {
 export async function extractGitReposFromJira(provider: string, apiKey: string, description: string) {
     const prompt = `
 Analyze this Jira description and extract three distinct things:
-1. ANY git repository URLs mentioned (usually ending in .git, or standard git repo urls). List them on separate lines starting EXACTLY with "REPO: ". If none are found, say "REPO: NONE"
+1. ANY repository URLs mentioned (such as GitHub, GitLab, Bitbucket links). These might be standard web URLs (e.g., https://github.com/user/repo) or end in .git. List them on separate lines starting EXACTLY with "REPO: ". Include the full URL. If none are found, say "REPO: NONE". Do NOT include Jira ticket URLs.
 2. The overarching purpose of this program based on the description. Write it under the EXACT header "PURPOSE DO NOT REMOVE:".
 3. Write standard BDD documentation summarizing the feature. Write it under the EXACT header "BDD DO NOT REMOVE:".
 

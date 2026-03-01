@@ -59,10 +59,40 @@ export async function fetchJiraTicket(baseUrl: string, email: string, token: str
     if (typeof data.fields?.description === "string") {
         descriptionText = data.fields.description;
     } else if (data.fields?.description?.content) {
-        // Simple ADF to Text extraction
-        descriptionText = data.fields.description.content
-            .map((block: any) => block.content?.map((inner: any) => inner.text).join("") || "")
-            .join("\n");
+        // Deep ADF to Text & URL extraction
+        const extractTextFromAdf = (nodes: any[]): string => {
+            if (!nodes) return "";
+            return nodes.map(node => {
+                let text = "";
+
+                // If it's a smart link / inline card
+                if ((node.type === "inlineCard" || node.type === "blockCard") && node.attrs?.url) {
+                    text += ` ${node.attrs.url} `;
+                }
+
+                // If it's standard text
+                if (node.type === "text") {
+                    text += node.text || "";
+                    // Check if the text has a link mark applied to it
+                    if (node.marks) {
+                        node.marks.forEach((mark: any) => {
+                            if (mark.type === "link" && mark.attrs?.href && mark.attrs.href !== node.text) {
+                                text += ` (${mark.attrs.href}) `;
+                            }
+                        });
+                    }
+                }
+
+                // Recurse into children
+                if (node.content) {
+                    text += extractTextFromAdf(node.content);
+                }
+
+                return text;
+            }).join(" ");
+        };
+
+        descriptionText = extractTextFromAdf(data.fields.description.content);
     }
 
     return {
