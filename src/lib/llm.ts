@@ -45,8 +45,8 @@ export async function callVegasLLM(provider: string, apiKey: string, prompt: str
             return data.content[0].text;
         }
         else if (provider === "gemini") {
-            // Using v1 as it is more stable than v1beta for some regions
-            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+            // Reverting to v1beta as gemini-1.5-flash is often not yet in v1 for all regions/keys
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
             const res = await fetch(url, {
                 method: "POST",
                 headers,
