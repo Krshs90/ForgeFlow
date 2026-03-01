@@ -9,6 +9,15 @@ export default function Home() {
   const [generationLog, setGenerationLog] = useState<string[]>([]);
   const [isDone, setIsDone] = useState(false);
 
+  // Dropdown state
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  const providers = [
+    { id: "gemini", label: "Google Gemini" },
+    { id: "claude", label: "Anthropic Claude" },
+    { id: "chatgpt", label: "OpenAI ChatGPT" }
+  ];
+
   // Form State
   const [formData, setFormData] = useState({
     jiraBaseUrl: "",
@@ -35,9 +44,40 @@ export default function Home() {
     localStorage.setItem("forgeflowConfig", JSON.stringify(configToSave));
   };
 
+  const handleProviderSelect = (providerId: string) => {
+    const newFormData = { ...formData, llmProvider: providerId };
+    setFormData(newFormData);
+    setDropdownOpen(false);
+
+    // Save to local storage
+    const configToSave = { ...newFormData, jiraTicket: "" };
+    localStorage.setItem("forgeflowConfig", JSON.stringify(configToSave));
+  };
+
   const handleGenerate = async () => {
     if (!formData.jiraTicket || !formData.jiraToken || !formData.jiraBaseUrl) {
       alert("Please configure Jira Base URL, Api Token, and Ticket key first.");
+      setActiveTab("config");
+      return;
+    }
+
+    // Basic API Key Validation Check
+    if (formData.llmProvider === "chatgpt" && !formData.llmApiKey.startsWith("sk-")) {
+      alert("OpenAI API keys typically start with 'sk-'. Please enter a valid key.");
+      setActiveTab("config");
+      return;
+    }
+
+    // Google Gemini API keys are 39 characters long
+    if (formData.llmProvider === "gemini" && formData.llmApiKey.length !== 39) {
+      alert("Google Gemini API keys are typically 39 characters long. Please check your key.");
+      setActiveTab("config");
+      return;
+    }
+
+    // Anthropic Claude keys typically start with sk-ant-
+    if (formData.llmProvider === "claude" && !formData.llmApiKey.startsWith("sk-ant-")) {
+      alert("Anthropic API keys typically start with 'sk-ant-'. Please check your key.");
       setActiveTab("config");
       return;
     }
@@ -177,18 +217,30 @@ export default function Home() {
                 <h3 className="text-lg font-medium">LLM Provider (Vegas API)</h3>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className="space-y-2 relative">
                   <label className="text-sm font-medium text-muted-foreground">Provider</label>
-                  <select
-                    name="llmProvider"
-                    value={formData.llmProvider}
-                    onChange={handleInputChange}
-                    className="vercel-input appearance-none bg-background cursor-pointer"
+                  <div
+                    className="vercel-input flex items-center justify-between cursor-pointer bg-[#0a0a0a]"
+                    onClick={() => setDropdownOpen(!dropdownOpen)}
                   >
-                    <option value="gemini">Google Gemini</option>
-                    <option value="claude">Anthropic Claude</option>
-                    <option value="chatgpt">OpenAI ChatGPT</option>
-                  </select>
+                    <span>{providers.find(p => p.id === formData.llmProvider)?.label || "Select Provider"}</span>
+                    <span className="text-muted-foreground text-xs">▼</span>
+                  </div>
+
+                  {dropdownOpen && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-[#111] border border-border rounded-md shadow-lg z-10 overflow-hidden animate-in" style={{ animationDuration: '0.2s' }}>
+                      {providers.map((provider) => (
+                        <div
+                          key={provider.id}
+                          className="px-3 py-2 text-sm cursor-pointer hover:bg-accents-2 transition-colors flex items-center justify-between"
+                          onClick={() => handleProviderSelect(provider.id)}
+                        >
+                          {provider.label}
+                          {formData.llmProvider === provider.id && <CheckCircle2 className="w-3 h-3 text-primary" />}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted-foreground">LLM API Key</label>
