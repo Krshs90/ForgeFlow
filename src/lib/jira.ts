@@ -1,7 +1,12 @@
 export async function fetchJiraTicket(baseUrl: string, email: string, token: string, ticketKey: string) {
     console.log(`[Jira] Fetching ${ticketKey} from ${baseUrl} using API v2...`);
 
-    const cleanBaseUrl = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
+    let cleanBaseUrl = baseUrl.trim();
+    if (!cleanBaseUrl.startsWith("http://") && !cleanBaseUrl.startsWith("https://")) {
+        cleanBaseUrl = "https://" + cleanBaseUrl;
+    }
+    cleanBaseUrl = cleanBaseUrl.endsWith("/") ? cleanBaseUrl.slice(0, -1) : cleanBaseUrl;
+
     const apiUrl = `${cleanBaseUrl}/rest/api/2/issue/${ticketKey}`;
 
     const headers = new Headers();

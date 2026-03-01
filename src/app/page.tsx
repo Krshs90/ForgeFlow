@@ -33,7 +33,13 @@ export default function Home() {
   useEffect(() => {
     const savedConfig = localStorage.getItem("forgeflowConfig");
     if (savedConfig) {
-      setFormData(JSON.parse(savedConfig));
+      const parsed = JSON.parse(savedConfig);
+      // Merge with default state to prevent undefined values causing uncontrolled input errors
+      setFormData(prev => ({
+        ...prev,
+        ...parsed,
+        jiraEmail: parsed.jiraEmail || "",
+      }));
     }
   }, []);
 
