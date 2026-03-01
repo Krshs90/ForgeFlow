@@ -501,39 +501,39 @@ export default function Home() {
 
               {/* Download Section (Shows when done) */}
               {isDone && (
-                <div className="mt-6 p-4 rounded-md border border-border bg-accents-1 animate-in flex items-center justify-between">
+                <div className="mt-6 p-4 rounded-md border border-border bg-accents-1 animate-in flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
                   <div className="flex items-center gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-white" />
+                    <CheckCircle2 className="w-5 h-5 text-white shrink-0" />
                     <div>
                       <h4 className="font-medium">Orchestration Files Ready</h4>
-                      <p className="text-sm text-muted-foreground">Download your PowerShell script and TOML config.</p>
+                      <p className="text-sm text-muted-foreground break-words">Download your scripts and config.</p>
                     </div>
                   </div>
-                  <div className="flex flex-col gap-3">
-                    <div className="flex gap-3">
-                      <button onClick={downloadToml} className="vercel-button-secondary flex items-center gap-2">
-                        <FileCode2 className="w-4 h-4" />
-                        Download TOML
+                  <div className="flex flex-col gap-3 w-full lg:w-auto">
+                    <div className="flex flex-wrap gap-2 sm:gap-3">
+                      <button onClick={downloadToml} className="vercel-button-secondary flex items-center gap-2 flex-1 sm:flex-none justify-center min-w-[140px]">
+                        <FileCode2 className="w-4 h-4 shrink-0" />
+                        <span className="truncate">Download TOML</span>
                       </button>
-                      <button onClick={downloadPromptFile} className="vercel-button-secondary flex items-center gap-2">
-                        <FileCode2 className="w-4 h-4" />
-                        Download Prompt (.md)
+                      <button onClick={downloadPromptFile} className="vercel-button-secondary flex items-center gap-2 flex-1 sm:flex-none justify-center min-w-[140px]">
+                        <FileCode2 className="w-4 h-4 shrink-0" />
+                        <span className="truncate">Prompt (.md)</span>
                       </button>
-                      <button onClick={copyPrompt} className="vercel-button-secondary flex items-center gap-2 border-primary/30 text-primary">
-                        <TerminalSquare className="w-4 h-4" />
-                        Copy AI Prompt
+                      <button onClick={copyPrompt} className="vercel-button-secondary flex items-center gap-2 border-primary/30 text-primary flex-1 sm:flex-none justify-center min-w-[140px]">
+                        <TerminalSquare className="w-4 h-4 shrink-0" />
+                        <span className="truncate">Copy Prompt</span>
                       </button>
-                      <a href="/scripts/poll_toml_files.ps1" download className="vercel-button flex items-center gap-2 bg-white text-black hover:bg-gray-200">
-                        <TerminalSquare className="w-4 h-4" />
-                        Get Windows Script
+                      <a href="/scripts/poll_toml_files.ps1" download className="vercel-button flex items-center gap-2 bg-white text-black hover:bg-gray-200 flex-1 sm:flex-none justify-center min-w-[140px]">
+                        <TerminalSquare className="w-4 h-4 shrink-0" />
+                        <span className="truncate">Windows Script</span>
                       </a>
                     </div>
-                    <div className="flex gap-3 pt-2 border-t border-border mt-1">
-                      <span className="text-xs text-muted-foreground flex items-center mr-2">Additional Scripts:</span>
-                      <a href="/scripts/File_Watcher.ps1" download className="vercel-button-secondary text-xs h-7 px-2">
+                    <div className="flex flex-wrap gap-2 pt-2 border-t border-border mt-1 items-center">
+                      <span className="text-xs text-muted-foreground mr-2 shrink-0">Additional Scripts:</span>
+                      <a href="/scripts/File_Watcher.ps1" download className="vercel-button-secondary text-xs h-7 px-2 shrink-0">
                         File_Watcher.ps1
                       </a>
-                      <a href="/scripts/File_Stopper.ps1" download className="vercel-button-secondary text-xs h-7 px-2">
+                      <a href="/scripts/File_Stopper.ps1" download className="vercel-button-secondary text-xs h-7 px-2 shrink-0">
                         File_Stopper.ps1
                       </a>
                     </div>
