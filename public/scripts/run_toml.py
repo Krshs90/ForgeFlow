@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 """
 Run a .toml "command playlist" like:
 
@@ -89,9 +89,9 @@ def run_in_bash(script_text: str, stop_on_error: bool) -> int:
     # Write a temporary bash script so we don't fight quoting/escaping.
     with tempfile.NamedTemporaryFile("w", delete=False, suffix=".sh", encoding="utf-8", newline="\n") as f:
         script_path = f.name
-        f.write("#!/usr/bin/env bash\n")
-        # Strict-ish mode; allow user to opt out of stop-on-error by not using `set -e`.
-        f.write("set -u\n")  # undefined vars are errors (helps catch typos)
+        f.write("
+        
+        f.write("set -u\n")  
         if stop_on_error:
             f.write("set -e\n")
         f.write("\n")
@@ -99,7 +99,7 @@ def run_in_bash(script_text: str, stop_on_error: bool) -> int:
         f.write("\n")
 
     try:
-        # Use bash directly; state is kept inside the script.
+        
         proc = subprocess.run([bash, script_path], text=True)
         return proc.returncode
     finally:
@@ -115,7 +115,7 @@ def run_in_pwsh(script_text: str, stop_on_error: bool) -> int:
         print("ERROR: PowerShell not found ('pwsh' or 'powershell').", file=sys.stderr)
         return 2
 
-    # PowerShell script file
+    
     with tempfile.NamedTemporaryFile("w", delete=False, suffix=".ps1", encoding="utf-8", newline="\n") as f:
         script_path = f.name
         if stop_on_error:
@@ -135,11 +135,11 @@ def run_in_pwsh(script_text: str, stop_on_error: bool) -> int:
 
 def build_script_from_cmds(cmds: list[str], shell: str) -> str:
     if shell in ("bash", "sh"):
-        # Join commands with newlines so heredocs work naturally.
-        # Keep comments; bash will ignore lines starting with #.
+        
+        
         return "\n".join(cmds)
     elif shell in ("pwsh", "powershell"):
-        # For PowerShell, TOML would need PowerShell syntax commands.
+        
         return "\n".join(cmds)
     else:
         raise ValueError(f"Unsupported shell: {shell}")
@@ -177,9 +177,9 @@ def main() -> int:
     ap.add_argument("--continue-on-error", action="store_true", help="Do not stop on first failing command")
     args = ap.parse_args()
 
-    # Set up tee logging to both console and log file
+    
     tee = TeeWriter(LOG_FILE)
-    sys.stdout = tee  # type: ignore
+    sys.stdout = tee  
 
     toml_path = Path(args.toml_file).expanduser().resolve()
     if not toml_path.exists():
