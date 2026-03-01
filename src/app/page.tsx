@@ -232,11 +232,11 @@ export default function Home() {
     // @ts-ignore
     const data = window.__forgeflowResponse;
     if (!data?.aiPrompt) return;
-    const blob = new Blob([data.aiPrompt], { type: "text/plain" });
+    const blob = new Blob([data.aiPrompt], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `prompt-${formData.jiraTicket || 'output'}.txt`;
+    a.download = `prompt-${formData.jiraTicket || 'output'}.md`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -517,7 +517,7 @@ export default function Home() {
                       </button>
                       <button onClick={downloadPromptFile} className="vercel-button-secondary flex items-center gap-2">
                         <FileCode2 className="w-4 h-4" />
-                        Download Prompt (.txt)
+                        Download Prompt (.md)
                       </button>
                       <button onClick={copyPrompt} className="vercel-button-secondary flex items-center gap-2 border-primary/30 text-primary">
                         <TerminalSquare className="w-4 h-4" />
