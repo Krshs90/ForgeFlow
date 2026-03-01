@@ -21,6 +21,7 @@ export default function Home() {
   // Form State
   const [formData, setFormData] = useState({
     jiraBaseUrl: "",
+    jiraEmail: "",
     jiraToken: "",
     jiraTicket: "",
     llmProvider: "gemini",
@@ -55,8 +56,8 @@ export default function Home() {
   };
 
   const handleGenerate = async () => {
-    if (!formData.jiraTicket || !formData.jiraToken || !formData.jiraBaseUrl) {
-      alert("Please configure Jira Base URL, Api Token, and Ticket key first.");
+    if (!formData.jiraTicket || !formData.jiraToken || !formData.jiraEmail || !formData.jiraBaseUrl) {
+      alert("Please configure Jira Base URL, Email, API Token, and Ticket key first.");
       setActiveTab("config");
       return;
     }
@@ -82,6 +83,21 @@ export default function Home() {
       return;
     }
 
+    let finalTicketKey = formData.jiraTicket.trim();
+    if (finalTicketKey.includes("http")) {
+      try {
+        const urlObj = new URL(finalTicketKey);
+        if (urlObj.searchParams.has("selectedIssue")) {
+          finalTicketKey = urlObj.searchParams.get("selectedIssue") || finalTicketKey;
+        } else {
+          const parts = urlObj.pathname.split("/");
+          finalTicketKey = parts[parts.length - 1] || finalTicketKey;
+        }
+      } catch (e) {
+        // Ignore URL parse error
+      }
+    }
+
     setIsGenerating(true);
     setIsDone(false);
     setGenerationLog(["Initializing ForgeFlow pipeline..."]);
@@ -90,7 +106,7 @@ export default function Home() {
       const response = await fetch("/api/orchestrate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, jiraTicket: finalTicketKey }),
       });
 
       const data = await response.json();
@@ -184,7 +200,7 @@ export default function Home() {
                 <Database className="w-5 h-5" />
                 <h3 className="text-lg font-medium">Jira Integration</h3>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted-foreground">Jira Base URL</label>
                   <input
@@ -197,13 +213,24 @@ export default function Home() {
                   />
                 </div>
                 <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">Jira Email</label>
+                  <input
+                    type="email"
+                    name="jiraEmail"
+                    value={formData.jiraEmail}
+                    onChange={handleInputChange}
+                    placeholder="user@example.com"
+                    className="vercel-input"
+                  />
+                </div>
+                <div className="space-y-2">
                   <label className="text-sm font-medium text-muted-foreground">API Token</label>
                   <input
                     type="password"
                     name="jiraToken"
                     value={formData.jiraToken}
                     onChange={handleInputChange}
-                    placeholder="eyJhb..."
+                    placeholder="ATATT3x..."
                     className="vercel-input"
                   />
                 </div>

@@ -1,38 +1,88 @@
 export async function callVegasLLM(provider: string, apiKey: string, prompt: string) {
-    // Mock LLM call logic
-    console.log(`[LLM] Calling ${provider} with prompt: ${prompt.substring(0, 30)}...`);
+    console.log(`[LLM] Calling live ${provider} API...`);
 
-    return `Based on the Jira description, here are the extracted repositories:
-1. https://github.com/my-org/frontend-app.git
-2. https://github.com/my-org/backend-api.git
+    const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+    };
 
-PURPOSE DO NOT REMOVE:
-The purpose of this program is to securely process and route user payments through our third party gateway while updating the user's subscription status in real-time.
+    try {
+        if (provider === "chatgpt") {
+            headers["Authorization"] = `Bearer ${apiKey}`;
+            const res = await fetch("https://api.openai.com/v1/chat/completions", {
+                method: "POST",
+                headers,
+                body: JSON.stringify({
+                    model: "gpt-3.5-turbo",
+                    messages: [{ role: "user", content: prompt }]
+                })
+            });
+            if (!res.ok) throw new Error(await res.text());
+            const data = await res.json();
+            return data.choices[0].message.content;
+        }
+        else if (provider === "claude") {
+            headers["x-api-key"] = apiKey;
+            headers["anthropic-version"] = "2023-06-01";
+            const res = await fetch("https://api.anthropic.com/v1/messages", {
+                method: "POST",
+                headers,
+                body: JSON.stringify({
+                    model: "claude-3-haiku-20240307",
+                    max_tokens: 1024,
+                    messages: [{ role: "user", content: prompt }]
+                })
+            });
+            if (!res.ok) throw new Error(await res.text());
+            const data = await res.json();
+            return data.content[0].text;
+        }
+        else if (provider === "gemini") {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+            const res = await fetch(url, {
+                method: "POST",
+                headers,
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }]
+                })
+            });
+            if (!res.ok) throw new Error(await res.text());
+            const data = await res.json();
+            return data.candidates[0].content.parts[0].text;
+        }
+    } catch (error: any) {
+        console.error(`[LLM Error] Provider ${provider} failed:`, error.message);
+        throw new Error(`LLM Error (${provider}): API returned failure. Please check your API key and try again.`);
+    }
 
-BDD DO NOT REMOVE:
-# BDD Specification: Payment Gateway
-Feature: User Checkout
-  Scenario: Successful Payment
-    Given the user is on the checkout page
-    When the user enters valid payment details
-    Then the payment should be processed securely
-    And the user's subscription should be activated`;
+    throw new Error(`Unknown LLM provider: ${provider}`);
 }
 
 export async function extractGitReposFromJira(provider: string, apiKey: string, description: string) {
-    const prompt = `Extract all git repository URLs, the program's purpose, and generate BDD documentation from the following Jira description:\n${description}`;
+    const prompt = `
+Analyze this Jira description and extract three distinct things:
+1. ANY git repository URLs mentioned (usually ending in .git, or standard git repo urls). List them on separate lines starting EXACTLY with "REPO: ". If none are found, say "REPO: NONE"
+2. The overarching purpose of this program based on the description. Write it under the EXACT header "PURPOSE DO NOT REMOVE:".
+3. Write standard BDD documentation summarizing the feature. Write it under the EXACT header "BDD DO NOT REMOVE:".
+
+Jira Description:
+${description}
+`;
+
     const response = await callVegasLLM(provider, apiKey, prompt);
 
-    // Simple regex to extract urls from the mocked response
-    const urls = response.match(/https?:\/\/[^\s]+/g) || [];
+    // Regex to extract urls after REPO: 
+    const repoMatches = response.match(/REPO:\s*(https?:\/\/[^\s]+)/gi) || [];
+    const urls = repoMatches
+        .map(r => r.replace(/REPO:\s*/i, "").trim())
+        .filter(url => url !== "NONE" && url.length > 5);
 
-    // Extract purpose and BDD from mock response
-    const purposeMatch = response.match(/PURPOSE DO NOT REMOVE:\n([\s\S]*?)\n\nBDD DO NOT REMOVE:/);
-    const bddMatch = response.match(/BDD DO NOT REMOVE:\n([\s\S]*)$/);
+    // Extract purpose and BDD from live response
+    const purposeMatch = response.match(/PURPOSE DO NOT REMOVE:\s*([\s\S]*?)(?=\nBDD DO NOT REMOVE:|$)/i);
+    const bddMatch = response.match(/BDD DO NOT REMOVE:\s*([\s\S]*)$/i);
 
     return {
         urls,
-        purpose: purposeMatch ? purposeMatch[1].trim() : "Purpose not identified.",
-        bdd: bddMatch ? bddMatch[1].trim() : "# BDD Docs\nNot generated."
+        purpose: purposeMatch ? purposeMatch[1].trim() : "Purpose not identified by LLM.",
+        bdd: bddMatch ? bddMatch[1].trim() : "# BDD Docs\nNot generated by LLM."
     };
 }

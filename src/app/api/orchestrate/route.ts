@@ -7,9 +7,9 @@ import { generateMultiRepoTomlFile, fetchEnvFile } from "@/lib/generation";
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { jiraBaseUrl, jiraToken, jiraTicket, llmProvider, llmApiKey, quickVarKey } = body;
+        const { jiraBaseUrl, jiraEmail, jiraToken, jiraTicket, llmProvider, llmApiKey, quickVarKey } = body;
 
-        if (!jiraTicket || !jiraToken || !jiraBaseUrl) {
+        if (!jiraTicket || !jiraToken || !jiraEmail || !jiraBaseUrl) {
             return NextResponse.json({ error: "Missing Jira credentials" }, { status: 400 });
         }
 
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
 
         // 1. Fetch Jira Ticket
         addLog(`Fetching Jira ticket ${jiraTicket}...`);
-        const ticket = await fetchJiraTicket(jiraBaseUrl, jiraToken, jiraTicket);
+        const ticket = await fetchJiraTicket(jiraBaseUrl, jiraEmail, jiraToken, jiraTicket);
 
         // 2. Extract Repos using LLM
         addLog(`Extracting repositories using ${llmProvider}...`);

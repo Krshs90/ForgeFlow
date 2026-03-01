@@ -1,21 +1,39 @@
-export async function fetchJiraTicket(baseUrl: string, token: string, ticketKey: string) {
-    // Mock Jira fetch logic
-    console.log(`[Jira] Fetching ${ticketKey} from ${baseUrl}`);
+export async function fetchJiraTicket(baseUrl: string, email: string, token: string, ticketKey: string) {
+    console.log(`[Jira] Fetching ${ticketKey} from ${baseUrl} using API v2...`);
 
-    // In a real scenario:
-    // const response = await fetch(`${baseUrl}/rest/api/3/issue/${ticketKey}`, {
-    //   headers: {
-    //     Authorization: `Basic ${Buffer.from(token).toString("base64")}`,
-    //     Accept: "application/json",
-    //   },
-    // });
-    // return response.json();
+    const cleanBaseUrl = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
+    const apiUrl = `${cleanBaseUrl}/rest/api/2/issue/${ticketKey}`;
 
+    const headers = new Headers();
+    headers.set("Authorization", `Basic ${Buffer.from(`${email}:${token}`).toString("base64")}`);
+    headers.set("Accept", "application/json");
+
+    const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: headers,
+    });
+
+    if (!response.ok) {
+        let errorMsg = `Jira API error ${response.status}: ${response.statusText}`;
+        try {
+            const errData = await response.json();
+            if (errData.errorMessages && errData.errorMessages.length > 0) {
+                errorMsg = `Jira Error: ${errData.errorMessages.join(", ")}`;
+            }
+        } catch (e) {
+            // ignore JSON parse error on error response
+        }
+        throw new Error(errorMsg);
+    }
+
+    const data = await response.json();
+
+    // Jira API v2 returns description as a string
     return {
-        key: ticketKey,
+        key: data.key || ticketKey,
         fields: {
-            summary: "Implement payment gateway frontend",
-            description: "We need to set up the payment gateway inside the frontend repository: https://github.com/my-org/frontend-app.git\n\nAlso requires updates to the backend service: https://github.com/my-org/backend-api.git",
+            summary: data.fields?.summary || "No Summary Provided",
+            description: data.fields?.description || "No Description Provided",
         }
     };
 }
