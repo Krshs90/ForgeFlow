@@ -43,7 +43,7 @@ Please review the overarching purpose and the BDD requirements, and then help me
 ${ticket.fields.summary}
 
 === LIST OF INVOLVED REPOSITORIES ===
-${repoUrls.join("\n")}
+${repoUrls.length > 0 ? repoUrls.join("\n") : "None specified in ticket."}
 
 === OVERARCHING PROGRAM PURPOSE ===
 ${purpose}
@@ -54,13 +54,13 @@ ${bdd}
 Please strictly adhere to the BDD specifications provided above. Before generating code, ask me where you should begin or if I need to explain the current architecture first.
 `.trim();
 
+        // 4. Analyze Repos
         if (repoUrls.length === 0) {
-            addLog("No repositories found in ticket.");
-            return NextResponse.json({ log, toml: null });
+            addLog("No repositories found in ticket. Will generate workspace context without repos.");
+        } else {
+            addLog(`Analyzing ${repoUrls.length} repositories...`);
         }
 
-        // 3. Analyze Repos
-        addLog(`Analyzing ${repoUrls.length} repositories...`);
         const reposData = [];
         for (const url of repoUrls) {
             const analysis = await downloadAndAnalyzeRepo(url);
