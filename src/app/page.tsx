@@ -16,11 +16,19 @@ export default function Home() {
 
   // Dropdown state
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [ideDropdownOpen, setIdeDropdownOpen] = useState(false);
 
   const providers = [
     { id: "gemini", label: "Google Gemini" },
     { id: "claude", label: "Anthropic Claude" },
     { id: "chatgpt", label: "OpenAI ChatGPT" }
+  ];
+
+  const ides = [
+    { id: "code", label: "VS Code (code)" },
+    { id: "cursor", label: "Cursor (cursor)" },
+    { id: "windsurf", label: "Windsurf (windsurf)" },
+    { id: "idea", label: "IntelliJ IDEA (idea)" },
   ];
 
   // Form State
@@ -70,6 +78,16 @@ export default function Home() {
     const newFormData = { ...formData, llmProvider: providerId };
     setFormData(newFormData);
     setDropdownOpen(false);
+
+    // Save to local storage
+    const configToSave = { ...newFormData, jiraTicket: "" };
+    localStorage.setItem("forgeflowConfig", JSON.stringify(configToSave));
+  };
+
+  const handleIdeSelect = (ideId: string) => {
+    const newFormData = { ...formData, preferredIde: ideId };
+    setFormData(newFormData);
+    setIdeDropdownOpen(false);
 
     // Save to local storage
     const configToSave = { ...newFormData, jiraTicket: "" };
@@ -190,8 +208,10 @@ export default function Home() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `workspace-${formData.jiraTicket}.toml`;
+    a.download = `workspace-${formData.jiraTicket || 'output'}.toml`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
@@ -371,19 +391,30 @@ export default function Home() {
                 <h3 className="text-lg font-medium">Automation Preferences</h3>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className="space-y-2 relative">
                   <label className="text-sm font-medium text-muted-foreground">Default IDE Editor</label>
-                  <select
-                    name="preferredIde"
-                    value={formData.preferredIde}
-                    onChange={handleInputChange}
-                    className="vercel-input w-full appearance-none bg-[#0a0a0a]"
+                  <div
+                    className="vercel-input flex items-center justify-between cursor-pointer bg-[#0a0a0a]"
+                    onClick={() => setIdeDropdownOpen(!ideDropdownOpen)}
                   >
-                    <option value="code">VS Code (code)</option>
-                    <option value="cursor">Cursor (cursor)</option>
-                    <option value="windsurf">Windsurf (windsurf)</option>
-                    <option value="idea">IntelliJ IDEA (idea)</option>
-                  </select>
+                    <span>{ides.find(i => i.id === formData.preferredIde)?.label || "VS Code (code)"}</span>
+                    <span className="text-muted-foreground text-xs">▼</span>
+                  </div>
+
+                  {ideDropdownOpen && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-[#111] border border-border rounded-md shadow-lg z-10 overflow-hidden animate-in" style={{ animationDuration: '0.2s' }}>
+                      {ides.map((ide) => (
+                        <div
+                          key={ide.id}
+                          className="px-3 py-2 text-sm cursor-pointer hover:bg-accents-2 transition-colors flex items-center justify-between"
+                          onClick={() => handleIdeSelect(ide.id)}
+                        >
+                          {ide.label}
+                          {formData.preferredIde === ide.id && <CheckCircle2 className="w-3 h-3 text-primary" />}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

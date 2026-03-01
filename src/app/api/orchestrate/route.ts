@@ -82,7 +82,8 @@ Please strictly adhere to the BDD specifications provided above. Before generati
             success: true,
             log,
             toml: tomlContent,
-            envMaps: envVarsMap
+            envMaps: envVarsMap,
+            aiPrompt: aiPrompt
         });
 
     } catch (error: any) {
