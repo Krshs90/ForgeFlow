@@ -180,6 +180,19 @@ export default function Home() {
     URL.revokeObjectURL(url);
   };
 
+  const copyPrompt = async () => {
+    // @ts-ignore
+    const data = window.__forgeflowResponse;
+    if (!data?.aiPrompt) return;
+
+    try {
+      await navigator.clipboard.writeText(data.aiPrompt);
+      alert("AI Prompt successfully copied to clipboard! You can now paste this directly into VS Code.");
+    } catch (err) {
+      alert("Failed to copy to clipboard.");
+    }
+  };
+
   return (
     <main className="min-h-screen py-10 px-4 sm:px-10 lg:px-20 animate-in">
       {/* Header */}
@@ -417,9 +430,13 @@ export default function Home() {
                         <FileCode2 className="w-4 h-4" />
                         Download TOML
                       </button>
-                      <a href="/scripts/poll_toml_files.ps1" download className="vercel-button flex items-center gap-2">
+                      <button onClick={copyPrompt} className="vercel-button-secondary flex items-center gap-2 border-primary/30 text-primary">
                         <TerminalSquare className="w-4 h-4" />
-                        poll_toml_files.ps1
+                        Copy AI Prompt
+                      </button>
+                      <a href="/scripts/poll_toml_files.ps1" download className="vercel-button flex items-center gap-2 bg-white text-black hover:bg-gray-200">
+                        <TerminalSquare className="w-4 h-4" />
+                        Get Windows Script
                       </a>
                     </div>
                     <div className="flex gap-3 pt-2 border-t border-border mt-1">

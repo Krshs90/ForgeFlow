@@ -33,13 +33,35 @@ export async function POST(request: Request) {
         addLog(`\n=== EXTRACTED PURPOSE ===\n${purpose}`);
         addLog(`\n=== EXTRACTED BDD ===\n${bdd}`);
 
+        // 3. Construct AI Prompt for VS Code
+        addLog("Compiling generative AI prompt for VS Code...");
+        const aiPrompt = `
+Hello AI assistant! Below is the context extracted from my Jira ticket (${targetTicket}).
+Please review the overarching purpose and the BDD requirements, and then help me implement the necessary features across the listed repositories.
+
+=== TICKET SUMMARY ===
+${ticket.fields.summary}
+
+=== LIST OF INVOLVED REPOSITORIES ===
+${repoUrls.join("\n")}
+
+=== OVERARCHING PROGRAM PURPOSE ===
+${purpose}
+
+=== BEHAVIOR-DRIVEN DEVELOPMENT (BDD) REQUIREMENTS ===
+${bdd}
+
+Please strictly adhere to the BDD specifications provided above. Before generating code, ask me where you should begin or if I need to explain the current architecture first.
+`.trim();
+
         // EARLY EXIT FOR TESTING LLM EXTRACTION
         addLog(`\n[Test Mode] Early exit. Ticket extraction verified successfully.`);
         return NextResponse.json({
             success: true,
             log,
             toml: null,
-            envMaps: {}
+            envMaps: {},
+            aiPrompt: aiPrompt
         });
 
         if (repoUrls.length === 0) {
