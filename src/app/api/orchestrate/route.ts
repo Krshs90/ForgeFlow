@@ -7,7 +7,7 @@ import { generateMultiRepoTomlFile, fetchEnvFile } from "@/lib/generation";
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { jiraBaseUrl, jiraEmail, jiraToken, jiraTicket, llmProvider, llmApiKey, quickVarKey } = body;
+        const { jiraBaseUrl, jiraEmail, jiraToken, jiraTicket, llmProvider, llmApiKey, quickVarKey, preferredIde } = body;
 
         if (!jiraTicket || !jiraToken || !jiraEmail || !jiraBaseUrl) {
             return NextResponse.json({ error: "Missing Jira credentials" }, { status: 400 });
@@ -54,16 +54,6 @@ ${bdd}
 Please strictly adhere to the BDD specifications provided above. Before generating code, ask me where you should begin or if I need to explain the current architecture first.
 `.trim();
 
-        // EARLY EXIT FOR TESTING LLM EXTRACTION
-        addLog(`\n[Test Mode] Early exit. Ticket extraction verified successfully.`);
-        return NextResponse.json({
-            success: true,
-            log,
-            toml: null,
-            envMaps: {},
-            aiPrompt: aiPrompt
-        });
-
         if (repoUrls.length === 0) {
             addLog("No repositories found in ticket.");
             return NextResponse.json({ log, toml: null });
@@ -85,7 +75,7 @@ Please strictly adhere to the BDD specifications provided above. Before generati
             envVarsMap[repoName] = await fetchEnvFile(quickVarKey || "default", repoName);
         }
 
-        const tomlContent = generateMultiRepoTomlFile(reposData, jiraTicket, envVarsMap, purpose, bdd);
+        const tomlContent = generateMultiRepoTomlFile(reposData, jiraTicket, envVarsMap, purpose, bdd, preferredIde || "code");
         addLog("Workspace files successfully generated!");
 
         return NextResponse.json({

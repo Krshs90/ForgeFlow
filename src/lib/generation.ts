@@ -9,7 +9,8 @@ export function generateMultiRepoTomlFile(
     jiraKey: string,
     envVarsMap: Record<string, string>,
     purpose: string,
-    bddDocs: string
+    bddDocs: string,
+    preferredIde: string = "code"
 ) {
     const tomlLines: string[] = [];
 
@@ -17,6 +18,7 @@ export function generateMultiRepoTomlFile(
     tomlLines.push(`ticket = "${jiraKey}"`);
     tomlLines.push(`created_at = "${new Date().toISOString()}"`);
     tomlLines.push(`purpose = """\n${purpose}\n"""`);
+    tomlLines.push(`ide = "${preferredIde}"`);
     tomlLines.push(``);
 
     tomlLines.push(`[documentation]`);

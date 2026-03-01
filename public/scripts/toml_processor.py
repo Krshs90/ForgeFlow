@@ -115,8 +115,9 @@ def main():
         
     print("\n=== Orchestration Complete! ===")
     print(f"Workspace located at: {workspace_dir}")
-    print("Opening VS Code...")
-    run_command(f'code "{workspace_file}"')
+    ide_cmd = orchestration.get("ide", "code")
+    print(f"Opening workspace with {ide_cmd}...")
+    run_command(f'{ide_cmd} "{workspace_file}"')
 
 if __name__ == "__main__":
     main()

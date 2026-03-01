@@ -31,6 +31,7 @@ export default function Home() {
     jiraTicket: "",
     llmProvider: "gemini",
     llmApiKey: "",
+    preferredIde: "code",
     quickVarKey: "",
   });
 
@@ -52,7 +53,16 @@ export default function Home() {
     const newFormData = { ...formData, [e.target.name]: e.target.value };
     setFormData(newFormData);
     // Don't save the specific ticket they are generating for, just their reusable config credentials
-    const configToSave = { ...newFormData, jiraTicket: "" };
+    const configToSave = {
+      jiraBaseUrl: newFormData.jiraBaseUrl,
+      jiraToken: newFormData.jiraToken,
+      jiraEmail: newFormData.jiraEmail,
+      llmProvider: newFormData.llmProvider,
+      llmApiKey: newFormData.llmApiKey,
+      preferredIde: newFormData.preferredIde, // Added preferredIde
+      quickVarKey: newFormData.quickVarKey,
+      jiraTicket: "", // Ensure jiraTicket is not saved
+    };
     localStorage.setItem("forgeflowConfig", JSON.stringify(configToSave));
   };
 
@@ -156,6 +166,11 @@ export default function Home() {
       // Store raw files in window for actual download
       // @ts-ignore
       window.__forgeflowResponse = data;
+
+      // Auto-download TOML
+      setTimeout(() => {
+        downloadToml();
+      }, 500);
 
     } catch (error: unknown) {
       if (error instanceof Error) {
@@ -345,6 +360,30 @@ export default function Home() {
                       <CheckCircle2 className="w-2 h-2" /> {testStatus.success}
                     </p>
                   )}
+                </div>
+              </div>
+            </div>
+
+            {/* Automation Preferences */}
+            <div className="glass-panel p-6 rounded-lg space-y-4">
+              <div className="flex items-center gap-2 mb-4">
+                <Settings className="w-5 h-5" />
+                <h3 className="text-lg font-medium">Automation Preferences</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">Default IDE Editor</label>
+                  <select
+                    name="preferredIde"
+                    value={formData.preferredIde}
+                    onChange={handleInputChange}
+                    className="vercel-input w-full appearance-none bg-[#0a0a0a]"
+                  >
+                    <option value="code">VS Code (code)</option>
+                    <option value="cursor">Cursor (cursor)</option>
+                    <option value="windsurf">Windsurf (windsurf)</option>
+                    <option value="idea">IntelliJ IDEA (idea)</option>
+                  </select>
                 </div>
               </div>
             </div>
