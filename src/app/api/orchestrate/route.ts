@@ -77,6 +77,15 @@ Please strictly adhere to the BDD specifications provided above. Before generati
 
         const tomlContent = generateMultiRepoTomlFile(reposData, jiraTicket, envVarsMap, purpose, bdd, preferredIde || "code");
         addLog("Workspace files successfully generated!");
+        addLog("=========================================");
+        addLog(`✅ ForgeFlow Generation Complete!`);
+        addLog(`   Ticket: ${targetTicket}`);
+        addLog(`   Repos found: ${repoUrls.length}`);
+        addLog(`   TOML commands generated: ${tomlContent.split("\n").length} lines`);
+        addLog(`   AI Prompt: Ready to copy or download`);
+        addLog(`   Preferred IDE: ${preferredIde || "code"}`);
+        addLog("=========================================");
+        addLog("Your TOML file will auto-download shortly. Run it with: python run_toml.py <file>.toml");
 
         return NextResponse.json({
             success: true,
