@@ -228,6 +228,21 @@ export default function Home() {
     }
   };
 
+  const downloadPromptFile = () => {
+    // @ts-ignore
+    const data = window.__forgeflowResponse;
+    if (!data?.aiPrompt) return;
+    const blob = new Blob([data.aiPrompt], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `prompt-${formData.jiraTicket || 'output'}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <main className="min-h-screen py-10 px-4 sm:px-10 lg:px-20 animate-in">
       {/* Header */}
@@ -499,6 +514,10 @@ export default function Home() {
                       <button onClick={downloadToml} className="vercel-button-secondary flex items-center gap-2">
                         <FileCode2 className="w-4 h-4" />
                         Download TOML
+                      </button>
+                      <button onClick={downloadPromptFile} className="vercel-button-secondary flex items-center gap-2">
+                        <FileCode2 className="w-4 h-4" />
+                        Download Prompt (.txt)
                       </button>
                       <button onClick={copyPrompt} className="vercel-button-secondary flex items-center gap-2 border-primary/30 text-primary">
                         <TerminalSquare className="w-4 h-4" />
