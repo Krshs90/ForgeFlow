@@ -5,6 +5,8 @@ export async function callVegasLLM(provider: string, apiKey: string, prompt: str
         "Content-Type": "application/json",
     };
 
+    let errorBody = "";
+
     try {
         if (provider === "chatgpt") {
             headers["Authorization"] = `Bearer ${apiKey}`;
@@ -16,7 +18,10 @@ export async function callVegasLLM(provider: string, apiKey: string, prompt: str
                     messages: [{ role: "user", content: prompt }]
                 })
             });
-            if (!res.ok) throw new Error(await res.text());
+            if (!res.ok) {
+                errorBody = await res.text();
+                throw new Error(`OpenAI Error: ${res.status} ${res.statusText} - ${errorBody}`);
+            }
             const data = await res.json();
             return data.choices[0].message.content;
         }
@@ -32,12 +37,16 @@ export async function callVegasLLM(provider: string, apiKey: string, prompt: str
                     messages: [{ role: "user", content: prompt }]
                 })
             });
-            if (!res.ok) throw new Error(await res.text());
+            if (!res.ok) {
+                errorBody = await res.text();
+                throw new Error(`Anthropic Error: ${res.status} ${res.statusText} - ${errorBody}`);
+            }
             const data = await res.json();
             return data.content[0].text;
         }
         else if (provider === "gemini") {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+            // Using v1 as it is more stable than v1beta for some regions
+            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
             const res = await fetch(url, {
                 method: "POST",
                 headers,
@@ -45,16 +54,28 @@ export async function callVegasLLM(provider: string, apiKey: string, prompt: str
                     contents: [{ parts: [{ text: prompt }] }]
                 })
             });
-            if (!res.ok) throw new Error(await res.text());
+            if (!res.ok) {
+                errorBody = await res.text();
+                throw new Error(`Gemini Error: ${res.status} ${res.statusText} - ${errorBody}`);
+            }
             const data = await res.json();
+            if (!data.candidates || data.candidates.length === 0) {
+                throw new Error(`Gemini Error: No candidates returned. Safety filters might have blocked the response.`);
+            }
             return data.candidates[0].content.parts[0].text;
         }
     } catch (error: any) {
         console.error(`[LLM Error] Provider ${provider} failed:`, error.message);
-        throw new Error(`LLM Error (${provider}): API returned failure. Please check your API key and try again.`);
+        throw new Error(`LLM Error (${provider}): ${error.message}`);
     }
 
     throw new Error(`Unknown LLM provider: ${provider}`);
+}
+
+export async function testLLMConnection(provider: string, apiKey: string) {
+    const prompt = "Respond with exactly one word: 'READY'";
+    const response = await callVegasLLM(provider, apiKey, prompt);
+    return response.trim().toUpperCase().includes("READY");
 }
 
 export async function extractGitReposFromJira(provider: string, apiKey: string, description: string) {
@@ -73,8 +94,8 @@ ${description}
     // Regex to extract urls after REPO: 
     const repoMatches = response.match(/REPO:\s*(https?:\/\/[^\s]+)/gi) || [];
     const urls = repoMatches
-        .map(r => r.replace(/REPO:\s*/i, "").trim())
-        .filter(url => url !== "NONE" && url.length > 5);
+        .map((r: string) => r.replace(/REPO:\s*/i, "").trim())
+        .filter((url: string) => url !== "NONE" && url.length > 5);
 
     // Extract purpose and BDD from live response
     const purposeMatch = response.match(/PURPOSE DO NOT REMOVE:\s*([\s\S]*?)(?=\nBDD DO NOT REMOVE:|$)/i);

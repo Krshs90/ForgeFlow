@@ -8,6 +8,11 @@ export default function Home() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationLog, setGenerationLog] = useState<string[]>([]);
   const [isDone, setIsDone] = useState(false);
+  const [testStatus, setTestStatus] = useState<{ loading: boolean; error: string | null; success: string | null }>({
+    loading: false,
+    error: null,
+    success: null
+  });
 
   // Dropdown state
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -59,6 +64,29 @@ export default function Home() {
     // Save to local storage
     const configToSave = { ...newFormData, jiraTicket: "" };
     localStorage.setItem("forgeflowConfig", JSON.stringify(configToSave));
+  };
+
+  const handleTestLLMKey = async () => {
+    if (!formData.llmApiKey) {
+      alert("Please enter an API key first.");
+      return;
+    }
+    setTestStatus({ loading: true, error: null, success: null });
+    try {
+      const response = await fetch("/api/test-llm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: formData.llmProvider,
+          apiKey: formData.llmApiKey,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Test failed");
+      setTestStatus({ loading: false, error: null, success: data.message });
+    } catch (error: any) {
+      setTestStatus({ loading: false, error: error.message, success: null });
+    }
   };
 
   const handleGenerate = async () => {
@@ -276,15 +304,34 @@ export default function Home() {
                   )}
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">LLM API Key</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-muted-foreground">LLM API Key</label>
+                    <button
+                      onClick={handleTestLLMKey}
+                      disabled={testStatus.loading}
+                      className="text-[10px] uppercase tracking-wider font-bold text-primary hover:text-white transition-colors disabled:opacity-50"
+                    >
+                      {testStatus.loading ? "Testing..." : "Test API Key"}
+                    </button>
+                  </div>
                   <input
                     type="password"
                     name="llmApiKey"
                     value={formData.llmApiKey}
                     onChange={handleInputChange}
-                    placeholder="sk-..."
+                    placeholder="Enter your API key"
                     className="vercel-input"
                   />
+                  {testStatus.error && (
+                    <p className="text-[10px] text-red-500 mt-1 animate-in flex items-center gap-1">
+                      <AlertCircle className="w-2 h-2" /> {testStatus.error}
+                    </p>
+                  )}
+                  {testStatus.success && (
+                    <p className="text-[10px] text-green-500 mt-1 animate-in flex items-center gap-1">
+                      <CheckCircle2 className="w-2 h-2" /> {testStatus.success}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
