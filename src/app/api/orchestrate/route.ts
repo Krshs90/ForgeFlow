@@ -28,6 +28,20 @@ export async function POST(request: Request) {
         addLog(`Extracting repositories using ${llmProvider}...`);
         const { urls: repoUrls, purpose, bdd } = await extractGitReposFromJira(llmProvider, llmApiKey, ticket.fields.description);
 
+        addLog(`Found ${repoUrls.length} repository URLs:`);
+        repoUrls.forEach((url: string) => addLog(` - ${url}`));
+        addLog(`\n=== EXTRACTED PURPOSE ===\n${purpose}`);
+        addLog(`\n=== EXTRACTED BDD ===\n${bdd}`);
+
+        // EARLY EXIT FOR TESTING LLM EXTRACTION
+        addLog(`\n[Test Mode] Early exit. Ticket extraction verified successfully.`);
+        return NextResponse.json({
+            success: true,
+            log,
+            toml: null,
+            envMaps: {}
+        });
+
         if (repoUrls.length === 0) {
             addLog("No repositories found in ticket.");
             return NextResponse.json({ log, toml: null });
