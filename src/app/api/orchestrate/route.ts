@@ -20,8 +20,9 @@ export async function POST(request: Request) {
         };
 
         // 1. Fetch Jira Ticket
-        addLog(`Fetching Jira ticket ${jiraTicket}...`);
-        const ticket = await fetchJiraTicket(jiraBaseUrl, jiraEmail, jiraToken, jiraTicket);
+        const targetTicket = body.jiraTicket;
+        addLog(`Fetching Jira ticket ${targetTicket}...`);
+        const ticket = await fetchJiraTicket(jiraBaseUrl, jiraEmail, jiraToken, targetTicket);
 
         // 2. Extract Repos using LLM
         addLog(`Extracting repositories using ${llmProvider}...`);
