@@ -76,7 +76,13 @@ export function generateMultiRepoTomlFile(
     tomlLines.push(`  "@'\\n{\\n  \\"folders\\": [\\n${folderPaths}\\n  ]\\n}\\n'@ | Set-Content -Encoding UTF8 \\"$HOME/workspaces/${jiraKey}.code-workspace\\";",`);
 
     // Open IDE
-    tomlLines.push(`  "${preferredIde} \\"$HOME/workspaces/${jiraKey}.code-workspace\\";"`);
+    tomlLines.push(`  "${preferredIde} \\"$HOME/workspaces/${jiraKey}.code-workspace\\";",`);
+
+    // Print success
+    tomlLines.push(`  "Write-Host \\"=========================================\\" -ForegroundColor Green;",`);
+    tomlLines.push(`  "Write-Host \\"ForgeFlow Generation Successful!\\" -ForegroundColor Green;",`);
+    tomlLines.push(`  "Write-Host \\"Workspaces mapped to IDE for ${jiraKey}\\" -ForegroundColor Green;",`);
+    tomlLines.push(`  "Write-Host \\"=========================================\\" -ForegroundColor Green;"`);
 
     tomlLines.push(`]`);
 
