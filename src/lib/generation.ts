@@ -21,8 +21,9 @@ export function generateMultiRepoTomlFile(
     tomlLines.push(`cmds = [`);
     tomlLines.push(`  "New-Item -ItemType Directory -Force -Path \\"$HOME/workspaces\\" | Out-Null;",`);
 
-    // We assume an auto directory is created or exists based on the image's "auto/$PROJECT_NAME" paths
-    tomlLines.push(`  "New-Item -ItemType Directory -Force -Path \\"auto\\" | Out-Null;",`);
+    // Use absolute path under $HOME so we never hit permission issues with relative paths
+    tomlLines.push(`  "New-Item -ItemType Directory -Force -Path \\"$HOME/ForgeFlow/auto\\" | Out-Null;",`);
+    tomlLines.push(`  "Push-Location \\"$HOME/ForgeFlow\\";",`);
 
     repos.forEach((repo, index) => {
         const repoNumber = index + 1;
@@ -66,12 +67,15 @@ export function generateMultiRepoTomlFile(
             tomlLines.push(`  "$env:http_proxy=\\"http://desktop.proxy.vzwcorp.com:5150\\"; $env:https_proxy=\\"http://desktop.proxy.vzwcorp.com:5150\\"; & venv/Scripts/poetry install;",`);
         }
 
-        // Return to normal dir
+        // Return to repo parent (back to $HOME/ForgeFlow)
         tomlLines.push(`  "Pop-Location;",`);
     });
 
+    // Pop back from $HOME/ForgeFlow
+    tomlLines.push(`  "Pop-Location;",`);
+
     // Create VS Code workspace (or other IDE equivalent based on user pref)
-    const folderPaths = repos.map((repo, idx) => `    { \\"path\\": \\"auto/$PROJECT_NAME_${idx + 1}\\" }`).join(",\\n");
+    const folderPaths = repos.map((repo, idx) => `    { \\"path\\": \\"$HOME/ForgeFlow/auto/$PROJECT_NAME_${idx + 1}\\" }`).join(",\\n");
     tomlLines.push(`  "# Create IDE workspace",`);
     tomlLines.push(`  "@'\\n{\\n  \\"folders\\": [\\n${folderPaths}\\n  ]\\n}\\n'@ | Set-Content -Encoding UTF8 \\"$HOME/workspaces/${jiraKey}.code-workspace\\";",`);
 
