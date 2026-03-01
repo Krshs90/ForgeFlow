@@ -1,123 +1,189 @@
-import sys
+#!/usr/bin/env python3
+"""
+Run a .toml "command playlist" like:
+
+cmds = [
+  "mkdir -p auto;",
+  "PROJECT_NAME_1=\"repo\";",
+  "cd auto/$PROJECT_NAME_1;",
+  "cat > file << EOF\n...\nEOF",
+]
+
+Key design choice:
+- We run ALL cmds in ONE shell session so variables (PROJECT_NAME_1) and `cd` persist.
+
+Usage:
+  python run_toml.py path/to/file.toml
+  python run_toml.py path/to/file.toml --dry-run
+  python run_toml.py path/to/file.toml --shell bash
+  python run_toml.py path/to/file.toml --shell pwsh
+"""
+
+from __future__ import annotations
+
+import argparse
 import os
-import subprocess
 import platform
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
 
-# Handle TOML parsing depending on Python version
+# tomllib is built-in in Python 3.11+. If you're on 3.10 or older, install tomli.
 try:
-    import tomllib
-except ImportError:
+    import tomllib  # pyright: ignore[reportMissingImports]
+except ModuleNotFoundError:  # pragma: no cover
     try:
-        import tomli as tomllib
-    except ImportError:
-        print("Error: tomli library not found. Run pip install tomli.", file=sys.stderr)
-        sys.exit(1)
+        import tomli as tomllib  # type: ignore
+    except ModuleNotFoundError:
+        print("ERROR: Need Python 3.11+ (tomllib) or install 'tomli' for older Python.", file=sys.stderr)
+        sys.exit(2)
 
-def run_command(cmd, cwd=None):
-    """Executes a shell command and yields output."""
-    print(f"Running: {cmd}")
-    try:
-        proc = subprocess.run(
-            cmd, 
-            cwd=cwd, 
-            shell=True, 
-            check=True,
-            text=True,
-            capture_output=True
+
+def load_toml(path: Path) -> dict:
+    raw = path.read_bytes()
+    return tomllib.loads(raw.decode("utf-8"))
+
+
+def normalize_cmds(doc: dict) -> list[str]:
+    """
+    Supports:
+      cmds = ["...", "..."]
+    (Optional future extension: cmds = [{cmd="...", cwd="..."}])
+    """
+    if "cmds" not in doc:
+        raise ValueError("TOML must contain a top-level 'cmds' key (array of strings).")
+
+    cmds = doc["cmds"]
+    if not isinstance(cmds, list) or not all(isinstance(x, str) for x in cmds):
+        raise ValueError("'cmds' must be an array/list of strings.")
+
+    # Keep order, preserve embedded newlines (heredocs etc.)
+    return [c.rstrip() for c in cmds if c.strip() != ""]
+
+
+def detect_default_shell() -> str:
+    # Your sample is clearly bash-style (mkdir -p, heredoc, $VAR), so default to bash when possible.
+    if shutil.which("bash"):
+        return "bash"
+    if os.name == "nt":
+        # On Windows, user may have pwsh but that won't run bash syntax.
+        # Still, we fall back to pwsh ONLY if bash is missing and user explicitly wants it.
+        if shutil.which("pwsh"):
+            return "pwsh"
+        if shutil.which("powershell"):
+            return "powershell"
+    return "sh" if shutil.which("sh") else ""
+
+
+def run_in_bash(script_text: str, stop_on_error: bool) -> int:
+    bash = shutil.which("bash")
+    if not bash:
+        print(
+            "ERROR: 'bash' not found. Install Git Bash or use WSL (Windows) or run on macOS/Linux.",
+            file=sys.stderr,
         )
-        print(proc.stdout)
-        return True
-    except subprocess.CalledProcessError as e:
-        print(f"Command failed with exit code {e.returncode}", file=sys.stderr)
-        print(e.stderr, file=sys.stderr)
-        return False
+        return 2
 
-def main():
-    if len(sys.argv) < 2:
-        print("Usage: python toml_processor.py <path_to_toml>")
-        sys.exit(1)
-
-    toml_path = sys.argv[1]
-    
-    if not os.path.exists(toml_path):
-        print(f"Error: File {toml_path} not found.")
-        sys.exit(1)
+    # Write a temporary bash script so we don't fight quoting/escaping.
+    with tempfile.NamedTemporaryFile("w", delete=False, suffix=".sh", encoding="utf-8", newline="\n") as f:
+        script_path = f.name
+        f.write("#!/usr/bin/env bash\n")
+        # Strict-ish mode; allow user to opt out of stop-on-error by not using `set -e`.
+        f.write("set -u\n")  # undefined vars are errors (helps catch typos)
+        if stop_on_error:
+            f.write("set -e\n")
+        f.write("\n")
+        f.write(script_text)
+        f.write("\n")
 
     try:
-        with open(toml_path, "rb") as f:
-            config = tomllib.load(f)
-    except Exception as e:
-        print(f"Error parsing TOML file: {e}", file=sys.stderr)
-        sys.exit(1)
+        # Use bash directly; state is kept inside the script.
+        proc = subprocess.run([bash, script_path], text=True)
+        return proc.returncode
+    finally:
+        try:
+            os.remove(script_path)
+        except OSError:
+            pass
 
-    orchestration = config.get("orchestration", {})
-    ticket = orchestration.get("ticket", "UNKNOWN")
-    purpose = orchestration.get("purpose", "")
-    documentation = config.get("documentation", {})
-    bdd = documentation.get("bdd", "")
-    repositories = config.get("repository", [])
-    
-    print(f"=== Starting Orchestration for Ticket: {ticket} ===")
-    if purpose:
-        print(f"Purpose:\n{purpose.strip()}\n")
-    
-    # Base workspace directory 
-    workspace_dir = os.path.join(os.path.expanduser("~"), "Documents", "ForgeFlowWorkspaces", ticket)
-    os.makedirs(workspace_dir, exist_ok=True)
-    
-    for repo in repositories:
-        name = repo.get("name")
-        print(f"\n--- Processing Repository: {name} ---")
-        
-        repo_dir = os.path.join(workspace_dir, name)
-        
-        # Clone Command
-        clone_cmd = repo.get("clone_cmd")
-        if clone_cmd and not os.path.exists(repo_dir):
-            if not run_command(clone_cmd, cwd=workspace_dir):
-                print(f"Failed to clone {name}. Skipping.", file=sys.stderr)
-                continue
-                
-        # Checkout Branch
-        branch_cmd = repo.get("branch_cmd")
-        if branch_cmd and os.path.exists(repo_dir):
-            run_command(branch_cmd, cwd=repo_dir)
-            
-        # Build Commands
-        build_cmds = repo.get("build_cmds", [])
-        for cmd in build_cmds:
-            run_command(cmd, cwd=repo_dir)
-            
-        # Environment Template
-        if repo.get("env_template"):
-            env_path = os.path.join(repo_dir, ".env")
-            if not os.path.exists(env_path):
-                print(f"Creating .env template at {env_path}")
-                with open(env_path, "w") as f:
-                    f.write(f"# Auto-generated by ForgeFlow for {ticket}\n")
-                    
-    # Write BDD
-    if bdd:
-        bdd_path = os.path.join(workspace_dir, "BDD.md")
-        print(f"Creating BDD documentation at {bdd_path}")
-        with open(bdd_path, "w", encoding="utf-8") as f:
-            f.write(bdd)
-            
-    # Generate VS Code Workspace
-    workspace_file = os.path.join(workspace_dir, f"{ticket}.code-workspace")
-    import json
-    workspace_data = {
-        "folders": [{"path": repo.get("name")} for repo in repositories],
-        "settings": {}
-    }
-    with open(workspace_file, "w", encoding="utf-8") as f:
-        json.dump(workspace_data, f, indent=2)
-        
-    print("\n=== Orchestration Complete! ===")
-    print(f"Workspace located at: {workspace_dir}")
-    ide_cmd = orchestration.get("ide", "code")
-    print(f"Opening workspace with {ide_cmd}...")
-    run_command(f'{ide_cmd} "{workspace_file}"')
+
+def run_in_pwsh(script_text: str, stop_on_error: bool) -> int:
+    pwsh = shutil.which("pwsh") or shutil.which("powershell")
+    if not pwsh:
+        print("ERROR: PowerShell not found ('pwsh' or 'powershell').", file=sys.stderr)
+        return 2
+
+    # PowerShell script file
+    with tempfile.NamedTemporaryFile("w", delete=False, suffix=".ps1", encoding="utf-8", newline="\n") as f:
+        script_path = f.name
+        if stop_on_error:
+            f.write("$ErrorActionPreference = 'Stop'\n")
+        f.write(script_text)
+        f.write("\n")
+
+    try:
+        proc = subprocess.run([pwsh, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script_path], text=True)
+        return proc.returncode
+    finally:
+        try:
+            os.remove(script_path)
+        except OSError:
+            pass
+
+
+def build_script_from_cmds(cmds: list[str], shell: str) -> str:
+    if shell in ("bash", "sh"):
+        # Join commands with newlines so heredocs work naturally.
+        # Keep comments; bash will ignore lines starting with #.
+        return "\n".join(cmds)
+    elif shell in ("pwsh", "powershell"):
+        # For PowerShell, TOML would need PowerShell syntax commands.
+        return "\n".join(cmds)
+    else:
+        raise ValueError(f"Unsupported shell: {shell}")
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("toml_file", help="Path to the .toml file containing cmds=[...]")
+    ap.add_argument("--shell", choices=["bash", "sh", "pwsh", "powershell"], default=None, help="Shell to run in")
+    ap.add_argument("--dry-run", action="store_true", help="Print commands but do not execute")
+    ap.add_argument("--continue-on-error", action="store_true", help="Do not stop on first failing command")
+    args = ap.parse_args()
+
+    toml_path = Path(args.toml_file).expanduser().resolve()
+    if not toml_path.exists():
+        print(f"ERROR: File not found: {toml_path}", file=sys.stderr)
+        return 2
+
+    doc = load_toml(toml_path)
+    cmds = normalize_cmds(doc)
+
+    shell = args.shell or detect_default_shell()
+    if not shell:
+        print("ERROR: Could not detect any usable shell on this system.", file=sys.stderr)
+        return 2
+
+    script_text = build_script_from_cmds(cmds, shell)
+
+    if args.dry_run:
+        print(f"--- DRY RUN ({shell}) ---")
+        print(script_text)
+        return 0
+
+    stop_on_error = not args.continue_on_error
+
+    print(f"Running {len(cmds)} command(s) from: {toml_path.name}")
+    print(f"Shell: {shell} | OS: {platform.system()} {platform.release()}")
+    print("----")
+
+    if shell in ("bash", "sh"):
+        return run_in_bash(script_text, stop_on_error=stop_on_error)
+    else:
+        return run_in_pwsh(script_text, stop_on_error=stop_on_error)
+
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
