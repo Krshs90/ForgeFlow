@@ -1,7 +1,7 @@
 export async function downloadAndAnalyzeRepo(repoUrl: string) {
     console.log(`[Analysis] Downloading and analyzing ${repoUrl}...`);
 
-    // Mock analysis logic based on URL name
+    
     if (repoUrl.includes("frontend")) {
         return {
             type: "Node.js",

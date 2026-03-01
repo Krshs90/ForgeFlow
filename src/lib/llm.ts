@@ -45,7 +45,7 @@ export async function callVegasLLM(provider: string, apiKey: string, prompt: str
             return data.content[0].text;
         }
         else if (provider === "gemini") {
-            // Using gemini-2.5-flash as 1.5 is deprecated as of 2026
+            
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
             const res = await fetch(url, {
                 method: "POST",
@@ -91,13 +91,13 @@ ${description}
 
     const response = await callVegasLLM(provider, apiKey, prompt);
 
-    // Regex to extract urls after REPO: 
+    
     const repoMatches = response.match(/REPO:\s*(https?:\/\/[^\s]+)/gi) || [];
     const urls = repoMatches
         .map((r: string) => r.replace(/REPO:\s*/i, "").trim())
         .filter((url: string) => url !== "NONE" && url.length > 5);
 
-    // Extract purpose and BDD from live response
+    
     const purposeMatch = response.match(/PURPOSE DO NOT REMOVE:\s*([\s\S]*?)(?=\nBDD DO NOT REMOVE:|$)/i);
     const bddMatch = response.match(/BDD DO NOT REMOVE:\s*([\s\S]*)$/i);
 

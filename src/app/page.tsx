@@ -14,7 +14,7 @@ export default function Home() {
     success: null
   });
 
-  // Dropdown state
+
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [ideDropdownOpen, setIdeDropdownOpen] = useState(false);
 
@@ -31,7 +31,7 @@ export default function Home() {
     { id: "idea", label: "IntelliJ IDEA (idea)" },
   ];
 
-  // Form State
+
   const [formData, setFormData] = useState({
     jiraBaseUrl: "",
     jiraEmail: "",
@@ -43,12 +43,12 @@ export default function Home() {
     quickVarKey: "",
   });
 
-  // Load from localStorage on mount
+
   useEffect(() => {
     const savedConfig = localStorage.getItem("forgeflowConfig");
     if (savedConfig) {
       const parsed = JSON.parse(savedConfig);
-      // Merge with default state to prevent undefined values causing uncontrolled input errors
+
       setFormData(prev => ({
         ...prev,
         ...parsed,
@@ -60,16 +60,16 @@ export default function Home() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const newFormData = { ...formData, [e.target.name]: e.target.value };
     setFormData(newFormData);
-    // Don't save the specific ticket they are generating for, just their reusable config credentials
+
     const configToSave = {
       jiraBaseUrl: newFormData.jiraBaseUrl,
       jiraToken: newFormData.jiraToken,
       jiraEmail: newFormData.jiraEmail,
       llmProvider: newFormData.llmProvider,
       llmApiKey: newFormData.llmApiKey,
-      preferredIde: newFormData.preferredIde, // Added preferredIde
+      preferredIde: newFormData.preferredIde,
       quickVarKey: newFormData.quickVarKey,
-      jiraTicket: "", // Ensure jiraTicket is not saved
+      jiraTicket: "",
     };
     localStorage.setItem("forgeflowConfig", JSON.stringify(configToSave));
   };
@@ -79,7 +79,7 @@ export default function Home() {
     setFormData(newFormData);
     setDropdownOpen(false);
 
-    // Save to local storage
+
     const configToSave = { ...newFormData, jiraTicket: "" };
     localStorage.setItem("forgeflowConfig", JSON.stringify(configToSave));
   };
@@ -89,7 +89,7 @@ export default function Home() {
     setFormData(newFormData);
     setIdeDropdownOpen(false);
 
-    // Save to local storage
+
     const configToSave = { ...newFormData, jiraTicket: "" };
     localStorage.setItem("forgeflowConfig", JSON.stringify(configToSave));
   };
@@ -124,21 +124,21 @@ export default function Home() {
       return;
     }
 
-    // Basic API Key Validation Check
+
     if (formData.llmProvider === "chatgpt" && !formData.llmApiKey.startsWith("sk-")) {
       alert("OpenAI API keys typically start with 'sk-'. Please enter a valid key.");
       setActiveTab("config");
       return;
     }
 
-    // Google Gemini API keys are 39 characters long
+
     if (formData.llmProvider === "gemini" && formData.llmApiKey.length !== 39) {
       alert("Google Gemini API keys are typically 39 characters long. Please check your key.");
       setActiveTab("config");
       return;
     }
 
-    // Anthropic Claude keys typically start with sk-ant-
+
     if (formData.llmProvider === "claude" && !formData.llmApiKey.startsWith("sk-ant-")) {
       alert("Anthropic API keys typically start with 'sk-ant-'. Please check your key.");
       setActiveTab("config");
@@ -156,7 +156,7 @@ export default function Home() {
           finalTicketKey = parts[parts.length - 1] || finalTicketKey;
         }
       } catch (e) {
-        // Ignore URL parse error
+
       }
     }
 
@@ -181,11 +181,11 @@ export default function Home() {
       setIsGenerating(false);
       setIsDone(true);
 
-      // Store raw files in window for actual download
-      // @ts-ignore
-      window.__forgeflowResponse = data;
 
-      // Auto-download TOML
+
+      (window as any).__forgeflowResponse = data;
+
+
       setTimeout(() => {
         downloadToml();
       }, 500);
@@ -201,8 +201,8 @@ export default function Home() {
   };
 
   const downloadToml = () => {
-    // @ts-ignore
-    const data = window.__forgeflowResponse;
+
+    const data = (window as any).__forgeflowResponse;
     if (!data?.toml) return;
     const blob = new Blob([data.toml], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
@@ -216,8 +216,8 @@ export default function Home() {
   };
 
   const copyPrompt = async () => {
-    // @ts-ignore
-    const data = window.__forgeflowResponse;
+
+    const data = (window as any).__forgeflowResponse;
     if (!data?.aiPrompt) return;
 
     try {
@@ -229,8 +229,8 @@ export default function Home() {
   };
 
   const downloadPromptFile = () => {
-    // @ts-ignore
-    const data = window.__forgeflowResponse;
+
+    const data = (window as any).__forgeflowResponse;
     if (!data?.aiPrompt) return;
     const blob = new Blob([data.aiPrompt], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
@@ -245,7 +245,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen py-10 px-4 sm:px-10 lg:px-20 animate-in">
-      {/* Header */}
+      { }
       <header className="flex items-center justify-between border-b border-border pb-6 mb-8">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-md bg-white text-black flex items-center justify-center font-bold text-lg">
@@ -259,7 +259,7 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Main Content */}
+      { }
       <div className="max-w-4xl mx-auto space-y-8">
         <div>
           <h2 className="text-3xl font-bold tracking-tight mb-2">Workspace Orchestrator</h2>
@@ -268,7 +268,7 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Tabs */}
+        { }
         <div className="flex border-b border-border">
           <button
             onClick={() => setActiveTab("config")}
@@ -288,10 +288,10 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Tab Content: Config */}
+        { }
         {activeTab === "config" && (
           <div className="space-y-6 animate-in">
-            {/* Jira Settings */}
+            { }
             <div className="glass-panel p-6 rounded-lg space-y-4">
               <div className="flex items-center gap-2 mb-4">
                 <Database className="w-5 h-5" />
@@ -334,7 +334,7 @@ export default function Home() {
               </div>
             </div>
 
-            {/* AI Settings */}
+            { }
             <div className="glass-panel p-6 rounded-lg space-y-4">
               <div className="flex items-center gap-2 mb-4">
                 <Settings className="w-5 h-5" />
@@ -399,7 +399,7 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Automation Preferences */}
+            { }
             <div className="glass-panel p-6 rounded-lg space-y-4">
               <div className="flex items-center gap-2 mb-4">
                 <Settings className="w-5 h-5" />
@@ -442,7 +442,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* Tab Content: Generate */}
+        { }
         {activeTab === "generate" && (
           <div className="space-y-6 animate-in">
             <div className="glass-panel p-6 rounded-lg space-y-4">
@@ -474,7 +474,7 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Progress Terminal */}
+              { }
               <div className="mt-8 rounded-md bg-[#0a0a0a] border border-border overflow-hidden">
                 <div className="flex items-center px-4 py-2 border-b border-border bg-[#111]">
                   <TerminalSquare className="w-4 h-4 text-muted-foreground mr-2" />
@@ -499,7 +499,7 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Download Section (Shows when done) */}
+              { }
               {isDone && (
                 <div className="mt-6 p-4 rounded-md border border-border bg-accents-1 animate-in flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
                   <div className="flex items-center gap-3">

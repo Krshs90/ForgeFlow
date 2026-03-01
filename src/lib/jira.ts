@@ -3,30 +3,30 @@ export async function fetchJiraTicket(baseUrl: string, email: string, token: str
 
     let cleanBaseUrl = baseUrl.trim();
 
-    // If user enters a full URL as base, extract just the origin (e.g. domain.atlassian.net)
+    
     try {
         if (cleanBaseUrl.includes("atlassian.net")) {
-            // Prepend https if missing for URL parser
+            
             let urlToParse = cleanBaseUrl;
             if (!urlToParse.startsWith("http")) urlToParse = "https://" + urlToParse;
             const urlObj = new URL(urlToParse);
             cleanBaseUrl = urlObj.origin;
         } else {
-            // Fallback for custom domains
+            
             if (!cleanBaseUrl.startsWith("http")) cleanBaseUrl = "https://" + cleanBaseUrl;
             cleanBaseUrl = cleanBaseUrl.endsWith("/") ? cleanBaseUrl.slice(0, -1) : cleanBaseUrl;
         }
     } catch (e) {
-        // Fallback if URL parsing fails
+        
         if (!cleanBaseUrl.startsWith("http")) cleanBaseUrl = "https://" + cleanBaseUrl;
     }
 
-    // Use API v3 for Jira Cloud
+    
     const apiUrl = `${cleanBaseUrl}/rest/api/3/issue/${ticketKey}`;
     console.log(`[Jira] Calling API: ${apiUrl}`);
 
     const headers = new Headers();
-    // Use Buffer for Base64 encoding in Node context
+    
     const authString = Buffer.from(`${email.trim()}:${token.trim()}`).toString("base64");
     headers.set("Authorization", `Basic ${authString}`);
     headers.set("Accept", "application/json");
@@ -46,34 +46,34 @@ export async function fetchJiraTicket(baseUrl: string, email: string, token: str
                 errorMsg = `Jira Error: ${JSON.stringify(errData.errors)}`;
             }
         } catch (e) {
-            // ignore JSON parse error on error response
+            
         }
         throw new Error(errorMsg);
     }
 
     const data = await response.json();
 
-    // Jira API v3 returns description as an ADF (Atlassian Document Format) object or string depending on issue
-    // We try to extract text from ADF or fallback to a string
+    
+    
     let descriptionText = "No Description Provided";
     if (typeof data.fields?.description === "string") {
         descriptionText = data.fields.description;
     } else if (data.fields?.description?.content) {
-        // Deep ADF to Text & URL extraction
+        
         const extractTextFromAdf = (nodes: any[]): string => {
             if (!nodes) return "";
             return nodes.map(node => {
                 let text = "";
 
-                // If it's a smart link / inline card
+                
                 if ((node.type === "inlineCard" || node.type === "blockCard") && node.attrs?.url) {
                     text += ` ${node.attrs.url} `;
                 }
 
-                // If it's standard text
+                
                 if (node.type === "text") {
                     text += node.text || "";
-                    // Check if the text has a link mark applied to it
+                    
                     if (node.marks) {
                         node.marks.forEach((mark: any) => {
                             if (mark.type === "link" && mark.attrs?.href && mark.attrs.href !== node.text) {
@@ -83,7 +83,7 @@ export async function fetchJiraTicket(baseUrl: string, email: string, token: str
                     }
                 }
 
-                // Recurse into children
+                
                 if (node.content) {
                     text += extractTextFromAdf(node.content);
                 }
