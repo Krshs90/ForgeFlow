@@ -145,7 +145,7 @@ def build_script_from_cmds(cmds: list[str], shell: str) -> str:
         raise ValueError(f"Unsupported shell: {shell}")
 
 
-LOG_FILE = Path(os.path.expanduser("~")) / "Downloads" / "processed" / "run_toml_output.log"
+LOG_FILE = Path(os.path.expanduser("~")) / "Downloads" / "processed" / "run_toml_output.txt"
 
 
 class TeeWriter:
