@@ -145,6 +145,30 @@ def build_script_from_cmds(cmds: list[str], shell: str) -> str:
         raise ValueError(f"Unsupported shell: {shell}")
 
 
+LOG_FILE = Path(os.path.expanduser("~")) / "Downloads" / "processed" / "run_toml_output.log"
+
+
+class TeeWriter:
+    """Write to both stdout and a log file simultaneously."""
+    def __init__(self, log_path: Path):
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        self._file = open(log_path, "w", encoding="utf-8")
+        self._stdout = sys.stdout
+
+    def write(self, text: str) -> int:
+        self._stdout.write(text)
+        self._file.write(text)
+        self._file.flush()
+        return len(text)
+
+    def flush(self) -> None:
+        self._stdout.flush()
+        self._file.flush()
+
+    def close(self) -> None:
+        self._file.close()
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("toml_file", help="Path to the .toml file containing cmds=[...]")
@@ -153,17 +177,28 @@ def main() -> int:
     ap.add_argument("--continue-on-error", action="store_true", help="Do not stop on first failing command")
     args = ap.parse_args()
 
+    # Set up tee logging to both console and log file
+    tee = TeeWriter(LOG_FILE)
+    sys.stdout = tee  # type: ignore
+
     toml_path = Path(args.toml_file).expanduser().resolve()
     if not toml_path.exists():
-        print(f"ERROR: File not found: {toml_path}", file=sys.stderr)
+        print(f"ERROR: File not found: {toml_path}")
+        tee.close()
         return 2
 
-    doc = load_toml(toml_path)
-    cmds = normalize_cmds(doc)
+    try:
+        doc = load_toml(toml_path)
+        cmds = normalize_cmds(doc)
+    except Exception as e:
+        print(f"ERROR: Failed to parse TOML: {e}")
+        tee.close()
+        return 2
 
     shell = args.shell or detect_default_shell()
     if not shell:
-        print("ERROR: Could not detect any usable shell on this system.", file=sys.stderr)
+        print("ERROR: Could not detect any usable shell on this system.")
+        tee.close()
         return 2
 
     script_text = build_script_from_cmds(cmds, shell)
@@ -171,6 +206,7 @@ def main() -> int:
     if args.dry_run:
         print(f"--- DRY RUN ({shell}) ---")
         print(script_text)
+        tee.close()
         return 0
 
     stop_on_error = not args.continue_on_error
@@ -180,10 +216,25 @@ def main() -> int:
     print("----")
 
     if shell in ("bash", "sh"):
-        return run_in_bash(script_text, stop_on_error=stop_on_error)
+        rc = run_in_bash(script_text, stop_on_error=stop_on_error)
     else:
-        return run_in_pwsh(script_text, stop_on_error=stop_on_error)
+        rc = run_in_pwsh(script_text, stop_on_error=stop_on_error)
+
+    print("")
+    print("=" * 50)
+    if rc == 0:
+        print(f"SUCCESS: All {len(cmds)} command(s) from '{toml_path.name}' executed successfully!")
+    else:
+        print(f"FAILED: Script '{toml_path.name}' exited with error code {rc}.")
+    print(f"Shell: {shell} | OS: {platform.system()} {platform.release()}")
+    print(f"Log saved to: {LOG_FILE}")
+    print("=" * 50)
+
+    tee.close()
+    return rc
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+print("Script finished successfully!")
