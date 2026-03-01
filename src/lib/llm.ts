@@ -45,8 +45,8 @@ export async function callVegasLLM(provider: string, apiKey: string, prompt: str
             return data.content[0].text;
         }
         else if (provider === "gemini") {
-            // Reverting to v1beta as gemini-1.5-flash is often not yet in v1 for all regions/keys
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+            // Using gemini-2.5-flash as 1.5 is deprecated as of 2026
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
             const res = await fetch(url, {
                 method: "POST",
                 headers,
