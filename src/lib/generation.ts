@@ -19,10 +19,10 @@ export function generateMultiRepoTomlFile(
     tomlLines.push(`# GIT_TOKEN = user's Git OAuth token`);
     tomlLines.push(`# LATEST_PYTHON = latest Python version on system`);
     tomlLines.push(`cmds = [`);
-    tomlLines.push(`  "mkdir -p ~/workspaces;",`);
+    tomlLines.push(`  "New-Item -ItemType Directory -Force -Path \\"$HOME/workspaces\\" | Out-Null;",`);
 
     // We assume an auto directory is created or exists based on the image's "auto/$PROJECT_NAME" paths
-    tomlLines.push(`  "mkdir -p auto;",`);
+    tomlLines.push(`  "New-Item -ItemType Directory -Force -Path \\"auto\\" | Out-Null;",`);
 
     repos.forEach((repo, index) => {
         const repoNumber = index + 1;
@@ -30,58 +30,53 @@ export function generateMultiRepoTomlFile(
         const safeUrl = repo.url.includes("https://") ? repo.url.replace("https://", "https://oauth2:$GIT_TOKEN@") : repo.url;
 
         tomlLines.push(`  "# Setup repository ${repoNumber}: ${repoName}",`);
-        tomlLines.push(`  "PROJECT_NAME_${repoNumber}=\\"${repoName}\\";",`);
+        tomlLines.push(`  "$PROJECT_NAME_${repoNumber}=\\"${repoName}\\";",`);
 
         // Clone
         if (repo.analysis.type === "Python") {
-            tomlLines.push(`  "git clone -b python ${safeUrl} auto/$PROJECT_NAME_${repoNumber};",`);
+            tomlLines.push(`  "git clone -b python ${safeUrl} \\"auto/$PROJECT_NAME_${repoNumber}\\";",`);
         } else {
-            tomlLines.push(`  "git clone ${safeUrl} auto/$PROJECT_NAME_${repoNumber};",`);
+            tomlLines.push(`  "git clone ${safeUrl} \\"auto/$PROJECT_NAME_${repoNumber}\\";",`);
         }
 
         // Enter dir
-        tomlLines.push(`  "cd auto/$PROJECT_NAME_${repoNumber};",`);
+        tomlLines.push(`  "Push-Location \\"auto/$PROJECT_NAME_${repoNumber}\\";",`);
 
         // Checkout Branch
-        tomlLines.push(`  "git checkout -b Feature/${jiraKey} origin/development || git checkout -b Feature/${jiraKey} origin/dev || git checkout -b Feature/${jiraKey} main || git checkout -b Feature/${jiraKey} master;",`);
+        tomlLines.push(`  "git checkout -b Feature/${jiraKey} origin/development; if (-not $?) { git checkout -b Feature/${jiraKey} origin/dev }; if (-not $?) { git checkout -b Feature/${jiraKey} main }; if (-not $?) { git checkout -b Feature/${jiraKey} master };",`);
         tomlLines.push(`  "git push -u origin Feature/${jiraKey};",`);
 
         // Shift Left Agent config (specifically shown for Python in the image)
         if (repo.analysis.type === "Python") {
-            tomlLines.push(`  "git clone -b python https://oauth2:$GIT_TOKEN@gitlab.verizon.com/nts-falcon/projects/genai/inspire-core/ekb-testing/shift-left-agent auto/shift-left-agent;",`);
-            tomlLines.push(`  "cp -r auto/shift-left-agent/.github auto/$PROJECT_NAME_${repoNumber}/;",`);
-            tomlLines.push(`  "cp -r auto/shift-left-agent/.vscode auto/$PROJECT_NAME_${repoNumber}/;",`);
-            tomlLines.push(`  "rm -rf auto/shift-left-agent;",`);
+            tomlLines.push(`  "git clone -b python https://oauth2:$GIT_TOKEN@gitlab.verizon.com/nts-falcon/projects/genai/inspire-core/ekb-testing/shift-left-agent shift-left-agent;",`);
+            tomlLines.push(`  "Copy-Item -Recurse -Force shift-left-agent/.github ./;",`);
+            tomlLines.push(`  "Copy-Item -Recurse -Force shift-left-agent/.vscode ./;",`);
+            tomlLines.push(`  "Remove-Item -Recurse -Force shift-left-agent;",`);
         }
 
         // Move generated env and md (Assuming they are downloaded to ~/Downloads)
-        tomlLines.push(`  "mv ~/Downloads/${jiraKey}_${repoName}.env auto/$PROJECT_NAME_${repoNumber}/dev.env || true;",`);
-        tomlLines.push(`  "mv ~/Downloads/${jiraKey}_${repoName}.md auto/$PROJECT_NAME_${repoNumber}/ || true;",`);
+        tomlLines.push(`  "try { Move-Item -Force -Path \\"$HOME/Downloads/${jiraKey}_${repoName}.env\\" -Destination \\"dev.env\\" -ErrorAction Stop } catch { };",`);
+        tomlLines.push(`  "try { Move-Item -Force -Path \\"$HOME/Downloads/${jiraKey}_${repoName}.md\\" -Destination \\".\\" -ErrorAction Stop } catch { };",`);
 
         // Python specific setup
         if (repo.analysis.type === "Python") {
-            tomlLines.push(`  "PYTHON_VERSION=$($LATEST_PYTHON -c 'import sys; print(\\"{}.{}\\".format(sys.version_info.major, sys.version_info.minor))');",`);
-            tomlLines.push(`  "if $LATEST_PYTHON -c 'import sys; print(1 if (sys.version_info.major, sys.version_info.minor) < (3,11) else 0)' | grep -q '^1$'; then default button \\\\\\"OK\\\\\\" with icon caution with title \\\\\\"Python Version Warning\\\\\\"; fi;",`);
-            tomlLines.push(`  "[ ! -d venv ] && $LATEST_PYTHON -m venv venv;",`);
-            tomlLines.push(`  "venv/bin/pip install poetry;",`);
-            tomlLines.push(`  "export http_proxy=http://desktop.proxy.vzwcorp.com:5150; export https_proxy=http://desktop.proxy.vzwcorp.com:5150; venv/bin/poetry install;",`);
+            tomlLines.push(`  "try { $PYTHON_VERSION = & $LATEST_PYTHON -c 'import sys; print(\\"{}.{}\\".format(sys.version_info.major, sys.version_info.minor))' } catch { };",`);
+            tomlLines.push(`  "if (-not (Test-Path venv)) { & $LATEST_PYTHON -m venv venv };",`);
+            tomlLines.push(`  "& venv/Scripts/pip install poetry;",`);
+            tomlLines.push(`  "$env:http_proxy=\\"http://desktop.proxy.vzwcorp.com:5150\\"; $env:https_proxy=\\"http://desktop.proxy.vzwcorp.com:5150\\"; & venv/Scripts/poetry install;",`);
         }
 
         // Return to normal dir
-        tomlLines.push(`  "cd -;",`);
+        tomlLines.push(`  "Pop-Location;",`);
     });
 
     // Create VS Code workspace (or other IDE equivalent based on user pref)
     const folderPaths = repos.map((repo, idx) => `    { \\"path\\": \\"auto/$PROJECT_NAME_${idx + 1}\\" }`).join(",\\n");
     tomlLines.push(`  "# Create IDE workspace",`);
-    tomlLines.push(`  "cat > ~/workspaces/${jiraKey}.code-workspace << EOF\\n{\\n  \\"folders\\": [\\n${folderPaths}\\n  ]\\n}\\nEOF",`);
+    tomlLines.push(`  "@'\\n{\\n  \\"folders\\": [\\n${folderPaths}\\n  ]\\n}\\n'@ | Set-Content -Encoding UTF8 \\"$HOME/workspaces/${jiraKey}.code-workspace\\";",`);
 
     // Open IDE
-    if (preferredIde === "code") {
-        tomlLines.push(`  "'/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code' ~/workspaces/${jiraKey}.code-workspace;"`);
-    } else {
-        tomlLines.push(`  "${preferredIde} ~/workspaces/${jiraKey}.code-workspace;"`);
-    }
+    tomlLines.push(`  "${preferredIde} \\"$HOME/workspaces/${jiraKey}.code-workspace\\";"`);
 
     tomlLines.push(`]`);
 
